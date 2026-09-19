@@ -140,8 +140,7 @@ def render_token_contributions(
 ) -> str:
     if not tokens:
         return (
-            "<p>ব্যাখ্যা করার মতো "
-            "token পাওয়া যায়নি।</p>"
+            "<p>No tokens available for explanation.</p>"
         )
 
     max_absolute = max(
@@ -190,3 +189,31 @@ def render_token_contributions(
         + "".join(token_chips)
         + "</div>"
     )
+
+
+def explain_text_interactive(
+    text: str,
+    target_class: int,
+) -> str:
+    """Generate SHAP interactive HTML visualization (Colab-style)"""
+    explanation_text = shorten_text_for_shap(text)
+    
+    shap_values = get_explainer()(
+        [explanation_text],
+        max_evals=50,
+        batch_size=settings.shap_batch_size,
+    )
+    
+    sample_explanation = shap_values[0]
+    
+    # If multi-class, select only the predicted class
+    if len(sample_explanation.values.shape) == 2:
+        sample_explanation = sample_explanation[:, target_class]
+    
+    # Generate interactive HTML
+    shap_html = shap.plots.text(
+        sample_explanation,
+        display=False
+    )
+    
+    return shap_html

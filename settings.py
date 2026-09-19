@@ -7,12 +7,11 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
-    app_name: str = "মনের কথা"
+    app_name: str = "Bangla Mental Health Classifier"
 
     model_path: str = "weights/best_model.pth"
     model_name: str = "csebuetnlp/banglabert"
 
-    # Streamlit deployment 
     hf_model_repo: str = ""
     hf_model_file: str = "best_model.pth"
     hf_token: str | None = None
@@ -20,7 +19,6 @@ class Settings(BaseSettings):
     max_length: int = 160
     max_text_chars: int = 2000
 
-    # SHAP  
     shap_max_tokens: int = 40
     shap_batch_size: int = 8
 

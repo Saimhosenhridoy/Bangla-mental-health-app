@@ -17,22 +17,23 @@ ID2LABEL = {
 }
 
 DISPLAY_LABELS = {
-    "Depressive": "বিষণ্নতার ইঙ্গিত",
-    "Non_depressive": "বিষণ্নতার ইঙ্গিত নেই",
-    "Positive": "ইতিবাচক মানসিক অবস্থা",
+    "Depressive": "Signs of Depression",
+    "Non_depressive": "No Signs of Depression",
+    "Positive": "Positive Mental State",
 }
 
 LABEL_DESCRIPTIONS = {
     "Depressive": (
-        "লেখাটিতে মন খারাপ, হতাশা বা বিষণ্নতার সঙ্গে "
-        "সম্পর্কিত ভাষাগত সংকেত পাওয়া গেছে।"
+        "The text shows linguistic indicators associated with "
+        "sadness, hopelessness, or depressive thoughts."
     ),
     "Non_depressive": (
-        "লেখাটিতে বিষণ্নতার স্পষ্ট ভাষাগত সংকেত পাওয়া যায়নি।"
+        "The text does not show clear linguistic indicators "
+        "of depression."
     ),
     "Positive": (
-        "লেখাটিতে আশাবাদী বা ইতিবাচক মানসিক অবস্থার "
-        "ভাষাগত সংকেত পাওয়া গেছে।"
+        "The text shows linguistic indicators of an optimistic "
+        "or positive mental state."
     ),
 }
 
