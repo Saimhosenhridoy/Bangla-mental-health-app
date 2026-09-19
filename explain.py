@@ -42,7 +42,7 @@ def shorten_text_for_shap(text: str) -> str:
         text,
         add_special_tokens=False,
         truncation=True,
-        max_length=settings.shap_max_tokens,
+        max_length=512,
     )["input_ids"]
 
     return tokenizer.decode(
@@ -72,7 +72,7 @@ def explain_text(
 
     max_evals = max(
         2 * feature_count + 1,
-        20,
+        100,
     )
 
     shap_values = get_explainer()(
@@ -199,23 +199,37 @@ def explain_text_interactive(
 ) -> str:
     """Generate SHAP interactive HTML visualization (Colab-style)"""
     explanation_text = shorten_text_for_shap(text)
-    
+
+    tokenizer = get_tokenizer()
+
+    encoded = tokenizer(
+        explanation_text,
+        add_special_tokens=True,
+    )
+
+    feature_count = len(
+        encoded["input_ids"]
+    )
+
+    max_evals = max(
+        2 * feature_count + 1,
+        100,
+    )
+
     shap_values = get_explainer()(
         [explanation_text],
-        max_evals=50,
+        max_evals=max_evals,
         batch_size=settings.shap_batch_size,
     )
-    
+
     sample_explanation = shap_values[0]
-    
-    # If multi-class, select only the predicted class
+
     if len(sample_explanation.values.shape) == 2:
         sample_explanation = sample_explanation[:, target_class]
-    
-    # Generate interactive HTML
+
     shap_html = shap.plots.text(
         sample_explanation,
         display=False
     )
-    
+
     return shap_html
