@@ -2,21 +2,21 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
-from .explain import (
+from explain import (
     explain_text,
     render_token_contributions,
     explain_text_interactive,
 )
-from .model import (
+from model import (
     DISPLAY_LABELS,
     LABEL_DESCRIPTIONS,
 )
-from .model_loader import (
+from model_loader import (
     get_device,
     predict_text,
 )
-from .settings import settings
-from .text_utils import (
+from settings import settings
+from text_utils import (
     clean_text,
     contains_crisis_language,
 )
