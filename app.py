@@ -100,11 +100,19 @@ a[href*="streamlit.app"] {
 .caption-text { color: #2B3034; font-size: 0.85rem; margin: 0 0 0.6rem; opacity: 0.85; }
 
 .result-card {
-  min-height: 280px; max-height: 280px;
-  border-radius: 16px; padding: 1.1rem 1.15rem;
-  box-sizing: border-box; overflow: auto;
-  background: #627C8C; color: #fff; border: 3px solid #989398;
-  display: flex; flex-direction: column; justify-content: center;
+  height: auto;
+  min-height: 0;
+  max-height: none;
+  border-radius: 16px;
+  padding: 1.1rem 1.15rem;
+  box-sizing: border-box;
+  overflow: visible;
+  background: #627C8C;
+  color: #fff;
+  border: 3px solid #989398;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
 }
 .result-card h2 { margin: 0.25rem 0; font-size: 1.4rem; }
 .result-card .eyebrow { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; }
