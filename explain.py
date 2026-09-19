@@ -1,8 +1,10 @@
 from functools import lru_cache
 import html
 
+
 import numpy as np
 import shap
+
 
 from model import DISPLAY_LABELS, ID2LABEL
 from model_loader import (

@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 from transformers import AutoModel
 
 
@@ -11,16 +12,19 @@ LABEL2ID = {
     "Positive": 2,
 }
 
+
 ID2LABEL = {
     value: key
     for key, value in LABEL2ID.items()
 }
+
 
 DISPLAY_LABELS = {
     "Depressive": "Signs of Depression",
     "Non_depressive": "No Signs of Depression",
     "Positive": "Positive Mental State",
 }
+
 
 LABEL_DESCRIPTIONS = {
     "Depressive": (
