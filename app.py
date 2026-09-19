@@ -1,5 +1,6 @@
 import time
 
+import altair as alt
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
@@ -99,7 +100,7 @@ a[href*="streamlit.app"] {
 .caption-text { color: #2B3034; font-size: 0.85rem; margin: 0 0 0.6rem; opacity: 0.85; }
 
 .result-card {
-  min-height: 280px;
+  min-height: 280px; max-height: 280px;
   border-radius: 16px; padding: 1.1rem 1.15rem;
   box-sizing: border-box; overflow: auto;
   background: #627C8C; color: #fff; border: 3px solid #989398;
@@ -115,15 +116,20 @@ a[href*="streamlit.app"] {
 }
 
 [data-testid="stVegaLiteChart"],
-[data-testid="stArrowVegaLiteChart"] {
+[data-testid="stArrowVegaLiteChart"],
+[data-testid="stAltairChart"] {
   background: #ffffff !important;
   border: 3px solid #627C8C !important;
   border-radius: 16px !important;
+  height: 280px !important;
   min-height: 280px !important;
+  max-height: 280px !important;
   padding: 8px !important;
+  overflow: hidden !important;
 }
 [data-testid="stVegaLiteChart"] [data-testid="stToolbar"],
-[data-testid="stArrowVegaLiteChart"] button {
+[data-testid="stArrowVegaLiteChart"] button,
+[data-testid="stAltairChart"] button {
   display: none !important;
 }
 
@@ -179,7 +185,7 @@ st.markdown(
 <div class="hero">
   <div class="emoji-row">🧠 💚 🤝</div>
   <h1>Bangla Mental Health Classifier</h1>
-   <p>Bangla social-media text classification with SHAP explainability. Not a clinical diagnosis.</p>
+  <p>Bangla social-media text classification with SHAP explainability. Not a clinical diagnosis.</p>
 </div>
 """,
     unsafe_allow_html=True,
@@ -197,9 +203,18 @@ def use_example(example_text):
 
 
 examples = [
-    ("Depressive", "কয়েকদিন ধরে আমার কোনো কাজে মন বসছে না।"),
-    ("Non_depressive", "আজ সারাদিন কাজ করেছি, এখন বিশ্রাম নিচ্ছি।"),
-    ("Positive", "আজ আমি খুব আনন্দিত, বন্ধুদের সঙ্গে সময় কাটিয়েছি।"),
+    (
+        "Depressive",
+        "ধীরে ধীরে বেঁচে থাকার ইচ্ছা হারিয়ে যাচ্ছে।",
+    ),
+    (
+        "Non_depressive",
+        "আজ সারাদিন কাজ করেছি, এখন বিশ্রাম নিচ্ছি।",
+    ),
+    (
+        "Positive",
+        "আজ আমি খুব আনন্দিত, বন্ধুদের সঙ্গে সময় কাটিয়েছি।",
+    ),
 ]
 cols = st.columns(3)
 for col, (label, text) in zip(cols, examples):
@@ -280,8 +295,27 @@ if analyze_button:
             {"Class": DISPLAY_LABELS[label], "Probability (%)": round(prob * 100, 2)}
             for label, prob in result["probabilities"].items()
         ]
-        probability_df = pd.DataFrame(probability_rows).set_index("Class")
-        st.bar_chart(probability_df, color="#2B3034", height=280)
+        probability_df = pd.DataFrame(probability_rows)
+        chart = (
+            alt.Chart(probability_df)
+            .mark_bar(color="#2B3034", size=42)
+            .encode(
+                x=alt.X(
+                    "Class:N",
+                    sort=["Depressive", "Non_depressive", "Positive"],
+                    title=None,
+                ),
+                y=alt.Y(
+                    "Probability (%):Q",
+                    scale=alt.Scale(domain=[0, 100]),
+                    title=None,
+                ),
+            )
+            .properties(height=230)
+            .configure_view(strokeWidth=0)
+            .configure_axis(grid=True, domain=False)
+        )
+        st.altair_chart(chart, use_container_width=True)
 
     scroll_to("prediction-result")
 
