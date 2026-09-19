@@ -127,22 +127,16 @@ def explain_text_interactive(text: str, target_class: int) -> str:
     )
 
     sample = shap_values[0]
-    note = ""
-    if explanation_text.strip() != str(text).strip():
-        note = (
-            "<p style='color:#E93C35;font-size:0.85rem;'>"
-            "Speed mode: text was shortened for SHAP.</p>"
-        )
 
     try:
         shap_html = _shap_text_html(sample)
         return (
             "<div style='background:#ffffff;padding:12px;"
             "border-radius:12px;overflow:auto;'>"
-            f"{note}{shap_html}</div>"
+            f"{shap_html}</div>"
         )
     except Exception:
-        parts = [note]
+        parts = []
         values = np.asarray(sample.values)
         n_classes = values.shape[1] if values.ndim == 2 else 1
         for class_idx in range(min(3, n_classes)):
