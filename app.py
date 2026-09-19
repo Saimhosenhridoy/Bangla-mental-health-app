@@ -90,7 +90,7 @@ a[href*="streamlit.app"] {
 .hero::after { content: "💚"; position: absolute; bottom: -18px; right: -16px; font-size: 7rem; opacity: 0.08; }
 .hero .emoji-row { font-size: 2.1rem; margin-bottom: 0.35rem; position: relative; z-index: 1; }
 .hero h1 { margin: 0; font-size: 1.7rem; position: relative; z-index: 1; }
-.hero p { color: #B9C7D2; margin: 0.45rem auto 0; max-width: 580px; font-size: 0.9rem; position: relative; z-index: 1; }
+.hero p { color: #B9C7D2; margin: 0.45rem auto 0; max-width: 640px; font-size: 0.9rem; position: relative; z-index: 1; }
 
 .section-header {
   font-size: 1.15rem; font-weight: 700; color: #2B3034;
@@ -98,12 +98,10 @@ a[href*="streamlit.app"] {
 }
 .caption-text { color: #2B3034; font-size: 0.85rem; margin: 0 0 0.6rem; opacity: 0.85; }
 
-.result-card, .chart-shell {
-  min-height: 280px; height: 100%;
+.result-card {
+  min-height: 280px;
   border-radius: 16px; padding: 1.1rem 1.15rem;
   box-sizing: border-box; overflow: auto;
-}
-.result-card {
   background: #627C8C; color: #fff; border: 3px solid #989398;
   display: flex; flex-direction: column; justify-content: center;
 }
@@ -115,7 +113,19 @@ a[href*="streamlit.app"] {
   margin-top: 0.6rem; padding: 0.6rem 0.75rem; border-radius: 10px;
   background: #2B3034; color: #B9C7D2; font-size: 0.84rem;
 }
-.chart-shell { background: #989398; border: 3px solid #627C8C; }
+
+[data-testid="stVegaLiteChart"],
+[data-testid="stArrowVegaLiteChart"] {
+  background: #ffffff !important;
+  border: 3px solid #627C8C !important;
+  border-radius: 16px !important;
+  min-height: 280px !important;
+  padding: 8px !important;
+}
+[data-testid="stVegaLiteChart"] [data-testid="stToolbar"],
+[data-testid="stArrowVegaLiteChart"] button {
+  display: none !important;
+}
 
 .example-container {
   background: #627C8C; border: 3px solid #989398;
@@ -169,7 +179,7 @@ st.markdown(
 <div class="hero">
   <div class="emoji-row">🧠 💚 🤝</div>
   <h1>Bangla Mental Health Classifier</h1>
-  <p>AI-powered Bengali text analysis for mental health awareness. Not a clinical diagnosis.</p>
+   <p>Bangla social-media text classification with SHAP explainability. Not a clinical diagnosis.</p>
 </div>
 """,
     unsafe_allow_html=True,
@@ -245,11 +255,12 @@ if analyze_button:
     st.markdown('<p class="section-header">Prediction Result</p>', unsafe_allow_html=True)
     st.markdown(
         f'<p class="caption-text">Predicted class: <b>{display_label}</b> · '
-        "Bars show probability for Depressive, Non_depressive, and Positive.</p>",
+        "Probability for Depressive, Non_depressive, and Positive.</p>",
         unsafe_allow_html=True,
     )
 
     result_column, chart_column = st.columns(2, gap="large")
+
     with result_column:
         st.markdown(
             f"""
@@ -263,15 +274,14 @@ if analyze_button:
             """,
             unsafe_allow_html=True,
         )
+
     with chart_column:
-        st.markdown('<div class="chart-shell">', unsafe_allow_html=True)
         probability_rows = [
             {"Class": DISPLAY_LABELS[label], "Probability (%)": round(prob * 100, 2)}
             for label, prob in result["probabilities"].items()
         ]
         probability_df = pd.DataFrame(probability_rows).set_index("Class")
-        st.bar_chart(probability_df, color="#2B3034", height=248)
-        st.markdown("</div>", unsafe_allow_html=True)
+        st.bar_chart(probability_df, color="#2B3034", height=280)
 
     scroll_to("prediction-result")
 
@@ -298,10 +308,10 @@ if analyze_button:
         "This is a research model. It is not for diagnosis or as a substitute for professional care."
     )
 
-    st.markdown(
+st.markdown(
     '<p class="creator-id">Created by '
     '<a href="https://github.com/Saimhosenhridoy" '
     'style="color:#2B3034;font-weight:700;text-decoration:none;">'
-    '@Saimhosenhridoy</a></p>',
+    "@Saimhosenhridoy</a></p>",
     unsafe_allow_html=True,
 )
