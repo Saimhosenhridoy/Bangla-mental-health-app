@@ -197,7 +197,7 @@ def explain_text_interactive(
     text: str,
     target_class: int,
 ) -> str:
-    """Generate SHAP interactive HTML visualization (Colab-style)"""
+    """Generate SHAP interactive HTML visualization for all 3 classes"""
     explanation_text = shorten_text_for_shap(text)
 
     tokenizer = get_tokenizer()
@@ -224,12 +224,28 @@ def explain_text_interactive(
 
     sample_explanation = shap_values[0]
 
+    # Multi-class: সব class-এর জন্য SHAP values
     if len(sample_explanation.values.shape) == 2:
-        sample_explanation = sample_explanation[:, target_class]
-
-    shap_html = shap.plots.text(
-        sample_explanation,
-        display=False
-    )
-
-    return shap_html
+        # 3 class-এর জন্য SHAP values
+        html_parts = []
+        for class_idx in range(3):
+            class_shap = sample_explanation[:, class_idx]
+            class_name = DISPLAY_LABELS[ID2LABEL[class_idx]]
+            plot = shap.plots.text(class_shap, show=False)
+            if hasattr(plot, 'html'):
+                html_str = plot.html
+            elif hasattr(plot, 'data'):
+                html_str = plot.data
+            else:
+                html_str = str(plot)
+            html_parts.append(f"<h3>Class: {class_name}</h3>{html_str}")
+        return "<div>" + "<hr>".join(html_parts) + "</div>"
+    else:
+        # Single class
+        plot = shap.plots.text(sample_explanation, show=False)
+        if hasattr(plot, 'html'):
+            return plot.html
+        elif hasattr(plot, 'data'):
+            return plot.data
+        else:
+            return str(plot)

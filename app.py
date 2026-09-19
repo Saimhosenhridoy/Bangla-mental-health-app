@@ -15,33 +15,33 @@ st.markdown("""
 * { box-sizing: border-box; }
 html, body, [class*="css"] { font-family: 'Inter', sans-serif !important; }
 #root > div:nth-child(1) > div > div > div > div > section > div, button[kid="collapse-button"], div[data-testid="stSidebar"], footer, div[data-testid="stFooter"] { display: none !important; }
-.stApp { background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #e2e8f0 100%); min-height: 100vh; }
-.block-container { max-width: 1000px; padding-top: 1.5rem; padding-bottom: 2rem; }
-.hero { padding: 1.25rem; border-radius: 20px; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 50%, #0891b2 100%); color: white; box-shadow: 0 15px 45px rgba(79, 70, 229, 0.2); margin-bottom: 1.25rem; text-align: center; }
-.hero h1 { margin: 0; font-size: 1.75rem; font-weight: 800; }
-.hero p { color: #e0e7ff; font-size: 0.9rem; max-width: 600px; margin: 0.5rem auto 0; }
-.result-card { border-radius: 20px; padding: 1.5rem; color: white; background: linear-gradient(135deg, #4338ca 0%, #6d28d9 100%); box-shadow: 0 15px 40px rgba(109, 40, 217, 0.25); border: 2px solid rgba(255, 255, 255, 0.15); }
-.result-card h2 { margin: 0.3rem 0; font-size: 1.6rem; font-weight: 800; }
-.result-card .eyebrow { font-size: 0.75rem; opacity: 0.85; font-weight: 600; text-transform: uppercase; }
-.result-card .confidence { font-size: 1.1rem; font-weight: 700; margin-top: 0.5rem; }
-.result-card .description { color: #e0e7ff; font-size: 0.9rem; margin-top: 0.75rem; }
-.shap-wrap { display: flex; flex-wrap: wrap; gap: 10px; line-height: 2.4; padding: 12px 0 16px; }
-.shap-token { display: inline-block; padding: 4px 11px; border: 1px solid; border-radius: 10px; color: #1e293b; font-weight: 600; cursor: help; }
-.legend { color: #64748b; font-size: 0.9rem; margin-top: 8px; }
-.dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin: 0 6px 0 14px; vertical-align: middle; }
-div[data-testid="stTextArea"] textarea { background: rgba(255, 255, 255, 0.95); border-radius: 16px; border: 2px solid #c7d2fe; min-height: 150px; font-size: 1rem; font-family: 'Hind Siliguri', sans-serif !important; }
-div.stButton > button { border: 0; border-radius: 14px; font-weight: 700; min-height: 48px; background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); box-shadow: 0 8px 20px rgba(79, 70, 229, 0.25); }
-.section-header { font-size: 1.15rem; font-weight: 700; color: #1e293b; margin: 1.25rem 0 0.6rem; padding-bottom: 0.4rem; border-bottom: 3px solid #6366f1; }
-.chart-container { background: white; border-radius: 16px; padding: 1.25rem; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06); border: 1px solid #e2e8f0; }
+.stApp { background: linear-gradient(135deg, #E6F1FF 0%, #A8B2D1 50%, #192A48 100%); min-height: 100vh; }
+.block-container { max-width: 1000px; padding-top: 1rem; padding-bottom: 2rem; }
+.hero { padding: 1rem; border-radius: 16px; background: linear-gradient(135deg, #192A48 0%, #2D4A6E 50%, #192A48 100%); color: white; box-shadow: 0 10px 30px rgba(25, 42, 72, 0.3); margin-bottom: 1rem; text-align: center; border: 2px solid #A8B2D1; }
+.hero h1 { margin: 0; font-size: 1.5rem; font-weight: 800; }
+.hero p { color: #E6F1FF; font-size: 0.85rem; max-width: 550px; margin: 0.4rem auto 0; }
+.result-card { border-radius: 16px; padding: 1.25rem; color: white; background: linear-gradient(135deg, #192A48 0%, #2D4A6E 100%); box-shadow: 0 12px 35px rgba(25, 42, 72, 0.35); border: 2px solid #A8B2D1; }
+.result-card h2 { margin: 0.3rem 0; font-size: 1.5rem; font-weight: 800; }
+.result-card .eyebrow { font-size: 0.7rem; opacity: 0.9; font-weight: 600; text-transform: uppercase; }
+.result-card .confidence { font-size: 1rem; font-weight: 700; margin-top: 0.4rem; }
+.result-card .description { color: #E6F1FF; font-size: 0.85rem; margin-top: 0.6rem; }
+.shap-wrap { display: flex; flex-wrap: wrap; gap: 8px; line-height: 2.2; padding: 10px 0 14px; }
+.shap-token { display: inline-block; padding: 3px 9px; border: 1px solid; border-radius: 8px; color: #1e293b; font-weight: 600; cursor: help; }
+.legend { color: #64748b; font-size: 0.85rem; margin-top: 6px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin: 0 5px 0 12px; vertical-align: middle; }
+div[data-testid="stTextArea"] textarea { background: rgba(255, 255, 255, 0.95); border-radius: 14px; border: 2px solid #A8B2D1; min-height: 140px; font-size: 0.95rem; font-family: 'Hind Siliguri', sans-serif !important; }
+div.stButton > button { border: 0; border-radius: 12px; font-weight: 700; min-height: 44px; background: linear-gradient(135deg, #192A48 0%, #2D4A6E 100%); box-shadow: 0 6px 18px rgba(25, 42, 72, 0.3); }
+.section-header { font-size: 1.1rem; font-weight: 700; color: #192A48; margin: 1rem 0 0.5rem; padding-bottom: 0.3rem; border-bottom: 3px solid #A8B2D1; }
+.chart-container { background: white; border-radius: 16px; padding: 1.25rem; box-shadow: 0 4px 20px rgba(15, 23, 42, 0.06); border: 2px solid #A8B2D1; }
 @media (max-width: 768px) { .stColumns > div:first-child, .stColumns > div:last-child { width: 100% !important; } }
 </style>
 """, unsafe_allow_html=True)
 
 st.markdown("""
 <div class="hero">
-    <div style="font-size:2rem; margin-bottom:0.4rem">🧠</div>
+    <div style="font-size:1.8rem; margin-bottom:0.3rem">🧠</div>
     <h1>Bangla Mental Health Classifier</h1>
-    <p>Analyze Bengali text with AI-powered classification and SHAP explanations.</p>
+    <p>AI-powered Bengali text analysis with SHAP explanations for mental health awareness.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -59,7 +59,7 @@ for column, example in zip(example_columns, examples):
         st.button(button_label, use_container_width=True, on_click=use_example, args=(example_text,), key=f"ex_{button_label}")
 
 st.markdown('<p class="section-header">Enter your text</p>', unsafe_allow_html=True)
-user_text = st.text_area("", placeholder="Write your thoughts in Bengali here...", label_visibility="collapsed", key="mental_text", max_chars=settings.max_text_chars)
+user_text = st.text_area("Enter your text", placeholder="Write your thoughts in Bengali here...", label_visibility="collapsed", key="mental_text", max_chars=settings.max_text_chars)
 
 analyze_button = st.button("Analyze Text", type="primary", use_container_width=True)
 
@@ -101,7 +101,7 @@ if analyze_button:
         st.markdown("#### Class Probabilities")
         probability_rows = [{"Class": DISPLAY_LABELS[label], "Probability (%)": round(probability * 100, 2)} for label, probability in result["probabilities"].items()]
         probability_df = pd.DataFrame(probability_rows).set_index("Class")
-        st.bar_chart(probability_df, color="#6366f1")
+        st.bar_chart(probability_df, color="#192A48")
         st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown('<p class="section-header">SHAP Explanation</p>', unsafe_allow_html=True)
