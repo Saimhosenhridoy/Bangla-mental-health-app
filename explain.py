@@ -164,17 +164,17 @@ def render_token_contributions(
 
         if score >= 0:
             background = (
-                f"rgba(168,208,111,"
+                f"rgba(98,124,140,"
                 f"{opacity:.3f})"
             )
-            border = "#a8d06f"
+            border = "#627C8C"
             sign = "+"
         else:
             background = (
-                f"rgba(148,168,175,"
+                f"rgba(233,60,53,"
                 f"{opacity:.3f})"
             )
-            border = "#94a8af"
+            border = "#E93C35"
             sign = ""
 
         token_chips.append(
@@ -197,7 +197,7 @@ def explain_text_interactive(
     text: str,
     target_class: int,
 ) -> str:
-    """Generate SHAP interactive HTML visualization (Colab-এর মতো)"""
+    """Generate SHAP interactive HTML visualization"""
     explanation_text = shorten_text_for_shap(text)
 
     tokenizer = get_tokenizer()
@@ -226,9 +226,26 @@ def explain_text_interactive(
 
     
     if len(sample_explanation.values.shape) == 2:
-        sample_explanation = sample_explanation[:, target_class]
-
-     
-    shap_html = shap.plots.text(sample_explanation)
-    
-    return shap_html
+        
+        html_parts = []
+        for class_idx in range(3):
+            class_shap = sample_explanation[:, class_idx]
+            class_name = DISPLAY_LABELS[ID2LABEL[class_idx]]
+            plot = shap.plots.text(class_shap)
+            if hasattr(plot, 'html'):
+                html_str = plot.html
+            elif hasattr(plot, 'data'):
+                html_str = plot.data
+            else:
+                html_str = str(plot)
+            html_parts.append(f"<div style='margin-bottom:30px;'><h3 style='color:#2B3034; border-bottom:2px solid #E93C35; padding-bottom:10px;'>Class: {class_name}</h3>{html_str}</div>")
+        return "<div>" + "<hr style='border:1px solid #989398; margin:20px 0;'>".join(html_parts) + "</div>"
+    else:
+        # Single class
+        plot = shap.plots.text(sample_explanation)
+        if hasattr(plot, 'html'):
+            return plot.html
+        elif hasattr(plot, 'data'):
+            return plot.data
+        else:
+            return str(plot)
