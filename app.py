@@ -64,7 +64,7 @@ example_columns = st.columns(3)
 for column, example in zip(example_columns, examples):
     button_label, example_text = example
     with column:
-        st.button(button_label, use_container_width=True, on_click=use_example, args=(example_text,), key=f"ex_{button_label}", type="secondary", class_name="example-btn")
+        st.button(button_label, use_container_width=True, on_click=use_example, args=(example_text,), key=f"ex_{button_label}", type="secondary")
 
 st.markdown('</div>', unsafe_allow_html=True)
 
@@ -116,7 +116,7 @@ if analyze_button:
 
     with chart_column:
         st.markdown('<div class="chart-container">', unsafe_allow_html=True)
-        st.markdown("#### 📈 Class Probabilities", style="color:#B9C7D2;")
+        st.markdown("#### 📈 Class Probabilities")
         probability_rows = [{"Class": DISPLAY_LABELS[label], "Probability (%)": round(probability * 100, 2)} for label, probability in result["probabilities"].items()]
         probability_df = pd.DataFrame(probability_rows).set_index("Class")
         st.bar_chart(probability_df, color="#2B3034")
