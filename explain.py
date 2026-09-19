@@ -227,9 +227,13 @@ def explain_text_interactive(
     if len(sample_explanation.values.shape) == 2:
         sample_explanation = sample_explanation[:, target_class]
 
-    shap_html = shap.plots.text(
-        sample_explanation,
-        display=False
-    )
-
-    return shap_html
+    # Full interactive HTML (Colab-এর মতো)
+    plot = shap.plots.text(sample_explanation)
+    
+    # HTML string extract করা
+    if hasattr(plot, 'html'):
+        return plot.html
+    elif hasattr(plot, 'data'):
+        return plot.data
+    else:
+        return str(plot)
