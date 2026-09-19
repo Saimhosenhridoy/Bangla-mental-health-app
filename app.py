@@ -177,7 +177,7 @@ st.markdown(
 
 st.markdown('<div class="example-container">', unsafe_allow_html=True)
 st.markdown(
-    '<p class="section-header" style="margin-top:0;font-size:1rem;color:#B9C7D2;">Try an example</p>',
+    '<p class="section-header" style="margin-top:0;font-size:1rem;color:#111313;">💡 Try an example</p>',
     unsafe_allow_html=True,
 )
 
@@ -204,7 +204,7 @@ for col, (label, text) in zip(cols, examples):
         )
 st.markdown("</div>", unsafe_allow_html=True)
 
-st.markdown('<p class="section-header">Enter your text</p>', unsafe_allow_html=True)
+st.markdown('<p class="section-header">⌨️ Enter your text</p>', unsafe_allow_html=True)
 user_text = st.text_area(
     "Enter your text",
     placeholder="বাংলায় আপনার ভাবনা লিখুন...",
@@ -212,7 +212,7 @@ user_text = st.text_area(
     key="mental_text",
     max_chars=settings.max_text_chars,
 )
-analyze_button = st.button("Analyze Text", type="primary", use_container_width=True)
+analyze_button = st.button("🔄️ Analyze Text", type="primary", use_container_width=True)
 
 if analyze_button:
     cleaned_text = clean_text(user_text)
