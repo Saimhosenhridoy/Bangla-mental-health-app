@@ -1,10 +1,13 @@
 from functools import lru_cache
 from pathlib import Path
+
 import torch
 from huggingface_hub import hf_hub_download
 from transformers import AutoTokenizer
+
 from model import HybridBanglaBERTClassifier, ID2LABEL
 from settings import settings
+
 
 @lru_cache(maxsize=1)
 def get_device() -> torch.device:
@@ -12,8 +15,8 @@ def get_device() -> torch.device:
         return torch.device("cuda")
     return torch.device("cpu")
 
+
 def get_weight_path() -> Path:
-    # First try HF repo (primary source)
     if settings.hf_model_repo and settings.hf_model_repo.strip():
         downloaded_path = hf_hub_download(
             repo_id=settings.hf_model_repo.strip(),
@@ -21,17 +24,18 @@ def get_weight_path() -> Path:
             token=settings.hf_token,
         )
         return Path(downloaded_path)
-    
-    # Fallback to local path (if exists)
+
     if settings.model_path and settings.model_path.strip():
         local_path = Path(settings.model_path)
         if local_path.exists():
             return local_path
-    
+
     raise FileNotFoundError("HF_MODEL_REPO must be set in Secrets")
+
 
 def load_checkpoint(path: Path):
     return torch.load(path, map_location="cpu", weights_only=False)
+
 
 @lru_cache(maxsize=1)
 def get_model_name() -> str:
@@ -41,15 +45,17 @@ def get_model_name() -> str:
         return str(config.get("model_name", settings.model_name))
     return settings.model_name
 
+
 @lru_cache(maxsize=1)
 def get_tokenizer():
     return AutoTokenizer.from_pretrained(get_model_name())
 
+
 @lru_cache(maxsize=1)
 def load_model():
-    weight_path = get_weight_path()
-    checkpoint = load_checkpoint(weight_path)
+    checkpoint = load_checkpoint(get_weight_path())
     config = checkpoint.get("config", {}) if isinstance(checkpoint, dict) else {}
+
     model = HybridBanglaBERTClassifier(
         model_name=str(config.get("model_name", settings.model_name)),
         num_labels=3,
@@ -58,27 +64,53 @@ def load_model():
         focal_gamma=float(config.get("focal_gamma", 1.0)),
         label_smoothing=float(config.get("label_smoothing", 0.10)),
     )
-    state_dict = checkpoint.get("model_state_dict", checkpoint) if isinstance(checkpoint, dict) else checkpoint
+
+    if isinstance(checkpoint, dict):
+        state_dict = checkpoint.get("model_state_dict", checkpoint)
+    else:
+        state_dict = checkpoint
+
     if any(key.startswith("module.") for key in state_dict):
-        state_dict = {key.removeprefix("module."): value for key, value in state_dict.items()}
-    model.load_state_dict(state_dict, strict=True)
+        state_dict = {
+            key.removeprefix("module."): value
+            for key, value in state_dict.items()
+        }
+
+    model.load_state_dict(state_dict, strict=False)
     model.to(get_device())
     model.eval()
     return model
 
+
 def predict_probabilities(texts):
     if isinstance(texts, str):
         texts = [texts]
+    if hasattr(texts, "tolist"):
+        texts = texts.tolist()
     texts = [str(text) for text in list(texts)]
+
     tokenizer = get_tokenizer()
     model = load_model()
     device = get_device()
-    encoded = tokenizer(texts, padding=True, truncation=True, max_length=settings.max_length, return_tensors="pt")
-    encoded = {key: value.to(device) for key, value in encoded.items()}
+
+    encoded = tokenizer(
+        texts,
+        padding=True,
+        truncation=True,
+        max_length=settings.max_length,
+        return_tensors="pt",
+    )
+    encoded = {
+        "input_ids": encoded["input_ids"].to(device),
+        "attention_mask": encoded["attention_mask"].to(device),
+    }
+
     with torch.inference_mode():
         outputs = model(**encoded)
         probabilities = torch.softmax(outputs["logits"], dim=-1)
+
     return probabilities.detach().cpu().numpy()
+
 
 def predict_text(text: str) -> dict:
     probabilities = predict_probabilities([text])[0]
@@ -88,6 +120,9 @@ def predict_text(text: str) -> dict:
         "pred_index": pred_index,
         "pred_label": pred_label,
         "confidence": float(probabilities[pred_index]),
-        "probabilities": {ID2LABEL[index]: float(value) for index, value in enumerate(probabilities)},
+        "probabilities": {
+            ID2LABEL[index]: float(value)
+            for index, value in enumerate(probabilities)
+        },
         "device": str(get_device()),
     }

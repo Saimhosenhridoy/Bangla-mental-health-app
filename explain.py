@@ -1,239 +1,160 @@
 from functools import lru_cache
 import html
 
-
 import numpy as np
 import shap
 
-
 from model import DISPLAY_LABELS, ID2LABEL
-from model_loader import (
-    get_tokenizer,
-    predict_probabilities,
-)
+from model_loader import get_tokenizer, predict_probabilities
 from settings import settings
+
+MAX_SHAP_CHARS = 180
+MAX_EVALS_CAP = 61
+SHAP_MAX_LENGTH = 64
 
 
 @lru_cache(maxsize=1)
 def get_explainer():
-    tokenizer = get_tokenizer()
-
-    masker = shap.maskers.Text(
-        tokenizer
-    )
-
-    output_names = [
-        DISPLAY_LABELS[ID2LABEL[index]]
-        for index in range(3)
-    ]
-
+    output_names = [DISPLAY_LABELS[ID2LABEL[i]] for i in range(3)]
+    masker = shap.maskers.Text(r"\s+")
     return shap.Explainer(
         predict_probabilities,
         masker,
         algorithm="partition",
         output_names=output_names,
+        max_evals=MAX_EVALS_CAP,
     )
 
 
 def shorten_text_for_shap(text: str) -> str:
+    text = " ".join(str(text).split())
+    if len(text) > MAX_SHAP_CHARS:
+        text = text[:MAX_SHAP_CHARS].rsplit(" ", 1)[0]
     tokenizer = get_tokenizer()
-
     token_ids = tokenizer(
         text,
         add_special_tokens=False,
         truncation=True,
-        max_length=512,
+        max_length=SHAP_MAX_LENGTH,
     )["input_ids"]
-
-    return tokenizer.decode(
-        token_ids,
-        skip_special_tokens=True,
-    ).strip()
+    return tokenizer.decode(token_ids, skip_special_tokens=True).strip()
 
 
-def explain_text(
-    text: str,
-    target_class: int,
-) -> dict:
-    explanation_text = shorten_text_for_shap(
-        text
-    )
-
-    tokenizer = get_tokenizer()
-
-    encoded = tokenizer(
-        explanation_text,
-        add_special_tokens=True,
-    )
-
-    feature_count = len(
-        encoded["input_ids"]
-    )
-
-    max_evals = max(
-        2 * feature_count + 1,
-        100,
-    )
+def explain_text(text: str, target_class: int) -> dict:
+    explanation_text = shorten_text_for_shap(text)
+    n_words = max(len(explanation_text.split()), 1)
+    max_evals = min(2 * n_words + 1, MAX_EVALS_CAP)
+    if max_evals % 2 == 0:
+        max_evals += 1
 
     shap_values = get_explainer()(
         [explanation_text],
         max_evals=max_evals,
-        batch_size=settings.shap_batch_size,
+        batch_size=getattr(settings, "shap_batch_size", 16),
     )
 
-    sample_values = np.asarray(
-        shap_values.values[0]
-    )
-
+    sample_values = np.asarray(shap_values.values[0])
     if sample_values.ndim == 2:
-        class_values = sample_values[
-            :,
-            target_class,
-        ]
+        class_values = sample_values[:, target_class]
     else:
         class_values = sample_values
 
-    raw_tokens = np.asarray(
-        shap_values.data[0]
-    ).tolist()
-
+    raw_tokens = np.asarray(shap_values.data[0]).tolist()
     tokens = []
-
-    for token, score in zip(
-        raw_tokens,
-        class_values,
-    ):
-        cleaned_token = str(token).strip()
-
-        if not cleaned_token:
+    for token, score in zip(raw_tokens, class_values):
+        cleaned = str(token).strip()
+        if not cleaned or cleaned in {"[CLS]", "[SEP]", "[PAD]"}:
             continue
-
-        if cleaned_token in {
-            "[CLS]",
-            "[SEP]",
-            "[PAD]",
-        }:
-            continue
-
-        tokens.append(
-            (
-                cleaned_token,
-                float(score),
-            )
-        )
-
-    tokens.sort(
-        key=lambda item: abs(item[1]),
-        reverse=True,
-    )
+        tokens.append((cleaned, float(score)))
 
     return {
         "text_used": explanation_text,
-        "truncated": (
-            explanation_text.strip()
-            != text.strip()
-        ),
+        "truncated": explanation_text.strip() != str(text).strip(),
         "tokens": tokens,
     }
 
 
-def render_token_contributions(
-    tokens,
-) -> str:
+def render_token_contributions(tokens) -> str:
     if not tokens:
-        return (
-            "<p>No tokens available for explanation.</p>"
-        )
-
-    max_absolute = max(
-        abs(score)
-        for _, score in tokens
-    ) or 1.0
-
-    token_chips = []
-
+        return "<p>No tokens available for explanation.</p>"
+    max_absolute = max(abs(score) for _, score in tokens) or 1.0
+    chips = []
     for token, score in tokens:
-        strength = min(
-            abs(score) / max_absolute,
-            1.0,
-        )
-
-        opacity = (
-            0.16 + 0.64 * strength
-        )
-
+        strength = min(abs(score) / max_absolute, 1.0)
+        opacity = 0.18 + 0.62 * strength
         if score >= 0:
-            background = (
-                f"rgba(98,124,140,"
-                f"{opacity:.3f})"
-            )
+            background = f"rgba(98,124,140,{opacity:.3f})"
             border = "#627C8C"
             sign = "+"
         else:
-            background = (
-                f"rgba(233,60,53,"
-                f"{opacity:.3f})"
-            )
+            background = f"rgba(233,60,53,{opacity:.3f})"
             border = "#E93C35"
             sign = ""
-
-        token_chips.append(
+        chips.append(
             "<span class='shap-token' "
-            f"style='background:{background};"
-            f"border-color:{border}' "
+            f"style='background:{background};border-color:{border}' "
             f"title='SHAP: {sign}{score:.4f}'>"
-            f"{html.escape(token)}"
-            "</span>"
+            f"{html.escape(str(token))}</span>"
         )
-
-    return (
-        "<div class='shap-wrap'>"
-        + "".join(token_chips)
-        + "</div>"
-    )
+    return "<div class='shap-wrap'>" + "".join(chips) + "</div>"
 
 
-def explain_text_interactive(
-    text: str,
-    target_class: int,
-) -> str:
-    """Generate SHAP interactive HTML visualization"""
+def _shap_text_html(explanation) -> str:
+    try:
+        plot = shap.plots.text(explanation, display=False)
+    except TypeError:
+        plot = shap.plots.text(explanation)
+    if plot is None:
+        raise RuntimeError("shap.plots.text returned nothing")
+    if hasattr(plot, "data"):
+        return plot.data
+    if hasattr(plot, "html"):
+        return plot.html
+    return str(plot)
+
+
+def explain_text_interactive(text: str, target_class: int) -> str:
     explanation_text = shorten_text_for_shap(text)
-
-    tokenizer = get_tokenizer()
-
-    encoded = tokenizer(
-        explanation_text,
-        add_special_tokens=True,
-    )
-
-    feature_count = len(
-        encoded["input_ids"]
-    )
-
-    max_evals = max(
-        2 * feature_count + 1,
-        100,
-    )
+    n_words = max(len(explanation_text.split()), 1)
+    max_evals = min(2 * n_words + 1, MAX_EVALS_CAP)
+    if max_evals % 2 == 0:
+        max_evals += 1
 
     shap_values = get_explainer()(
         [explanation_text],
         max_evals=max_evals,
-        batch_size=settings.shap_batch_size,
+        batch_size=getattr(settings, "shap_batch_size", 16),
     )
 
-    sample_explanation = shap_values[0]
+    sample = shap_values[0]
+    note = ""
+    if explanation_text.strip() != str(text).strip():
+        note = (
+            "<p style='color:#E93C35;font-size:0.85rem;'>"
+            "Speed mode: text was shortened for SHAP.</p>"
+        )
 
-    # Multi-class: সব class-এর জন্য SHAP values
-    if len(sample_explanation.values.shape) == 2:
-        sample_explanation = sample_explanation[:, target_class]
-
-    # SHAP HTML generate
-    plot = shap.plots.text(sample_explanation)
-    
-    if hasattr(plot, 'html'):
-        return plot.html
-    elif hasattr(plot, 'data'):
-        return plot.data
-    else:
-        return str(plot)
+    try:
+        shap_html = _shap_text_html(sample)
+        return (
+            "<div style='background:#ffffff;padding:12px;"
+            "border-radius:12px;overflow:auto;'>"
+            f"{note}{shap_html}</div>"
+        )
+    except Exception:
+        parts = [note]
+        values = np.asarray(sample.values)
+        n_classes = values.shape[1] if values.ndim == 2 else 1
+        for class_idx in range(min(3, n_classes)):
+            class_name = DISPLAY_LABELS[ID2LABEL[class_idx]]
+            tokens = explain_text(text, class_idx)["tokens"]
+            parts.append(
+                f"<h3 style='color:#2B3034;border-bottom:2px solid #E93C35;'>"
+                f"{class_name}</h3>"
+                f"{render_token_contributions(tokens)}"
+            )
+        return (
+            "<div style='background:#ffffff;padding:12px;'>"
+            + "".join(parts)
+            + "</div>"
+        )
