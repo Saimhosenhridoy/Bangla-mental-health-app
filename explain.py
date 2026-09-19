@@ -224,28 +224,16 @@ def explain_text_interactive(
 
     sample_explanation = shap_values[0]
 
-    
+    # Multi-class: সব class-এর জন্য SHAP values
     if len(sample_explanation.values.shape) == 2:
-        
-        html_parts = []
-        for class_idx in range(3):
-            class_shap = sample_explanation[:, class_idx]
-            class_name = DISPLAY_LABELS[ID2LABEL[class_idx]]
-            plot = shap.plots.text(class_shap)
-            if hasattr(plot, 'html'):
-                html_str = plot.html
-            elif hasattr(plot, 'data'):
-                html_str = plot.data
-            else:
-                html_str = str(plot)
-            html_parts.append(f"<div style='margin-bottom:30px;'><h3 style='color:#2B3034; border-bottom:2px solid #E93C35; padding-bottom:10px;'>Class: {class_name}</h3>{html_str}</div>")
-        return "<div>" + "<hr style='border:1px solid #989398; margin:20px 0;'>".join(html_parts) + "</div>"
+        sample_explanation = sample_explanation[:, target_class]
+
+    # SHAP HTML generate
+    plot = shap.plots.text(sample_explanation)
+    
+    if hasattr(plot, 'html'):
+        return plot.html
+    elif hasattr(plot, 'data'):
+        return plot.data
     else:
-        # Single class
-        plot = shap.plots.text(sample_explanation)
-        if hasattr(plot, 'html'):
-            return plot.html
-        elif hasattr(plot, 'data'):
-            return plot.data
-        else:
-            return str(plot)
+        return str(plot)
