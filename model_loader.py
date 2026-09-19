@@ -37,8 +37,8 @@ def get_weight_path() -> Path:
         return Path(downloaded_path)
 
     raise FileNotFoundError(
-        f"Model weight পাওয়া যায়নি: {local_path}. "
-        "best_model.pth fileটি weights folder-এ রাখুন।"
+        f"Model weight not found: {local_path}. "
+        "Please place best_model.pth in the weights folder."
     )
 
 
@@ -135,7 +135,6 @@ def load_model():
     else:
         state_dict = checkpoint
 
-    # DataParallel দিয়ে train করা হলে
     if any(
         key.startswith("module.")
         for key in state_dict
