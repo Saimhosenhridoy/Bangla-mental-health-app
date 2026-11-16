@@ -19,12 +19,27 @@ def get_device() -> torch.device:
 
 def get_weight_path() -> Path:
     if settings.hf_model_repo and settings.hf_model_repo.strip():
-        downloaded_path = hf_hub_download(
-            repo_id=settings.hf_model_repo.strip(),
-            filename=settings.hf_model_file,
-            token=settings.hf_token,
-        )
-        return Path(downloaded_path)
+        repo_id = settings.hf_model_repo.strip()
+        candidates = [settings.hf_model_file]
+        if settings.hf_model_file.endswith(".pth"):
+            candidates.append(settings.hf_model_file[:-4] + ".pt")
+        elif settings.hf_model_file.endswith(".pt"):
+            candidates.append(settings.hf_model_file[:-3] + ".pth")
+
+        last_error = None
+        for filename in candidates:
+            try:
+                downloaded_path = hf_hub_download(
+                    repo_id=repo_id,
+                    filename=filename,
+                    token=settings.hf_token,
+                )
+                return Path(downloaded_path)
+            except Exception as e:
+                last_error = e
+
+        if last_error is not None:
+            raise last_error
 
     if settings.model_path and settings.model_path.strip():
         local_path = Path(settings.model_path)
