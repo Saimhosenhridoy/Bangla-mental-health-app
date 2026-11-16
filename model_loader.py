@@ -1,6 +1,7 @@
 from functools import lru_cache
 from pathlib import Path
 
+import numpy as np
 import torch
 from huggingface_hub import hf_hub_download
 from transformers import AutoTokenizer
@@ -95,30 +96,39 @@ def predict_probabilities(texts):
         texts = texts.tolist()
     texts = [str(text) for text in list(texts)]
 
+    if not texts:
+        return np.zeros((0, 3), dtype=np.float32)
+
     tokenizer = get_tokenizer()
     model = load_model()
     device = get_device()
 
-    encoded = tokenizer(
-        texts,
-        padding=True,
-        truncation=True,
-        max_length=settings.max_length,
-        return_tensors="pt",
-    )
-    encoded = {
-        "input_ids": encoded["input_ids"].to(device),
-        "attention_mask": encoded["attention_mask"].to(device),
-    }
+    # Safe batching to prevent Streamlit Cloud Out-Of-Memory (OOM) crashes
+    batch_size = getattr(settings, "shap_batch_size", 8) or 8
+    results = []
 
     with torch.inference_mode():
-        outputs = model(**encoded)
-        if "final_probs" in outputs and outputs["final_probs"] is not None:
-            probabilities = outputs["final_probs"]
-        else:
-            probabilities = torch.softmax(outputs["logits"], dim=-1)
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i : i + batch_size]
+            encoded = tokenizer(
+                batch,
+                padding=True,
+                truncation=True,
+                max_length=settings.max_length,
+                return_tensors="pt",
+            )
+            encoded = {
+                "input_ids": encoded["input_ids"].to(device),
+                "attention_mask": encoded["attention_mask"].to(device),
+            }
+            outputs = model(**encoded)
+            if "final_probs" in outputs and outputs["final_probs"] is not None:
+                probs = outputs["final_probs"]
+            else:
+                probs = torch.softmax(outputs["logits"], dim=-1)
+            results.append(probs.detach().cpu().numpy())
 
-    return probabilities.detach().cpu().numpy()
+    return np.concatenate(results, axis=0)
 
 
 def predict_text(text: str) -> dict:

@@ -8,9 +8,9 @@ from model import DISPLAY_LABELS, ID2LABEL
 from model_loader import get_tokenizer, predict_probabilities
 from settings import settings
 
-MAX_SHAP_CHARS = 180
-MAX_EVALS_CAP = 61
-SHAP_MAX_LENGTH = 64
+MAX_SHAP_CHARS = 160
+MAX_EVALS_CAP = 35
+SHAP_MAX_LENGTH = 36
 
 
 @lru_cache(maxsize=1)
@@ -50,7 +50,7 @@ def explain_text(text: str, target_class: int) -> dict:
     shap_values = get_explainer()(
         [explanation_text],
         max_evals=max_evals,
-        batch_size=getattr(settings, "shap_batch_size", 16),
+        batch_size=getattr(settings, "shap_batch_size", 8),
     )
 
     sample_values = np.asarray(shap_values.values[0])
@@ -123,7 +123,7 @@ def explain_text_interactive(text: str, target_class: int) -> str:
     shap_values = get_explainer()(
         [explanation_text],
         max_evals=max_evals,
-        batch_size=getattr(settings, "shap_batch_size", 16),
+        batch_size=getattr(settings, "shap_batch_size", 8),
     )
 
     sample = shap_values[0]

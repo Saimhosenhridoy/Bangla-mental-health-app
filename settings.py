@@ -19,10 +19,10 @@ class Settings(BaseSettings):
     max_length: int = 160
     max_text_chars: int = 2000
 
-    shap_max_tokens: int = 40
-    shap_max_chars: int = 180
-    shap_max_evals: int = 61
-    shap_batch_size: int = 16
+    shap_max_tokens: int = 36
+    shap_max_chars: int = 160
+    shap_max_evals: int = 35
+    shap_batch_size: int = 8
 
 
 settings = Settings()
