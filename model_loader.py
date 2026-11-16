@@ -5,7 +5,7 @@ import torch
 from huggingface_hub import hf_hub_download
 from transformers import AutoTokenizer
 
-from model import HybridBanglaBERTClassifier, ID2LABEL
+from model import BanglaHAFBERT, ID2LABEL
 from settings import settings
 
 
@@ -39,10 +39,13 @@ def load_checkpoint(path: Path):
 
 @lru_cache(maxsize=1)
 def get_model_name() -> str:
-    checkpoint = load_checkpoint(get_weight_path())
-    if isinstance(checkpoint, dict):
-        config = checkpoint.get("config", {})
-        return str(config.get("model_name", settings.model_name))
+    try:
+        checkpoint = load_checkpoint(get_weight_path())
+        if isinstance(checkpoint, dict):
+            config = checkpoint.get("config", {})
+            return str(config.get("model_name", settings.model_name))
+    except Exception:
+        pass
     return settings.model_name
 
 
@@ -56,17 +59,20 @@ def load_model():
     checkpoint = load_checkpoint(get_weight_path())
     config = checkpoint.get("config", {}) if isinstance(checkpoint, dict) else {}
 
-    model = HybridBanglaBERTClassifier(
-        model_name=str(config.get("model_name", settings.model_name)),
+    model = BanglaHAFBERT(
+        source=str(config.get("model_name", settings.model_name)),
+        flags=config.get("flags", {"gate": False}),
         num_labels=3,
         dropout=float(config.get("dropout", 0.35)),
-        class_weights=config.get("class_weights", [1.0, 1.5, 1.3]),
-        focal_gamma=float(config.get("focal_gamma", 1.0)),
-        label_smoothing=float(config.get("label_smoothing", 0.10)),
     )
 
     if isinstance(checkpoint, dict):
-        state_dict = checkpoint.get("model_state_dict", checkpoint)
+        if "model" in checkpoint and isinstance(checkpoint["model"], dict):
+            state_dict = checkpoint["model"]
+        elif "model_state_dict" in checkpoint and isinstance(checkpoint["model_state_dict"], dict):
+            state_dict = checkpoint["model_state_dict"]
+        else:
+            state_dict = checkpoint
     else:
         state_dict = checkpoint
 
@@ -107,7 +113,10 @@ def predict_probabilities(texts):
 
     with torch.inference_mode():
         outputs = model(**encoded)
-        probabilities = torch.softmax(outputs["logits"], dim=-1)
+        if "final_probs" in outputs and outputs["final_probs"] is not None:
+            probabilities = outputs["final_probs"]
+        else:
+            probabilities = torch.softmax(outputs["logits"], dim=-1)
 
     return probabilities.detach().cpu().numpy()
 

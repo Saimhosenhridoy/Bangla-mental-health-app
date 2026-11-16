@@ -12,8 +12,8 @@ class Settings(BaseSettings):
     app_name: str = "Bangla Mental Health Classifier"
     model_path: str = ""
     model_name: str = "csebuetnlp/banglabert"
-    hf_model_repo: str = ""
-    hf_model_file: str = "best_model.pth"
+    hf_model_repo: str = "Saimhosenhridoy/BanglaHAF-BERT"
+    hf_model_file: str = "best_model.pt"
     hf_token: str | None = None
 
     max_length: int = 160

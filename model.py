@@ -79,63 +79,291 @@ class LabelSmoothingFocalLoss(nn.Module):
         return loss.mean()
 
 
-class SelfAttentionWithMeanPooling(nn.Module):
-    def __init__(self, hidden_dim):
+class MultiHeadAttentionPooling(nn.Module):
+    def __init__(self, hidden, attention_heads=4, attention_dropout=0.10):
         super().__init__()
         self.attention = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
+            nn.Linear(hidden, hidden),
             nn.Tanh(),
-            nn.Linear(hidden_dim, 1, bias=False),
+            nn.Dropout(attention_dropout),
+            nn.Linear(hidden, attention_heads),
+        )
+        self.projection = nn.Linear(
+            hidden * attention_heads, hidden
         )
 
-    def forward(self, token_embeddings, attention_mask):
-        scores = self.attention(token_embeddings).squeeze(-1)
-        scores = scores.masked_fill(attention_mask == 0, -1e9)
-        weights = torch.softmax(scores, dim=1).unsqueeze(-1)
-        attention_vector = torch.sum(token_embeddings * weights, dim=1)
-        expanded_mask = attention_mask.unsqueeze(-1).float()
-        mean_vector = torch.sum(
-            token_embeddings * expanded_mask, dim=1
-        ) / expanded_mask.sum(dim=1).clamp(min=1e-9)
-        return (attention_vector + mean_vector) / 2.0
+    def forward(self, x, mask):
+        scores = self.attention(x.float())
+        scores = scores.masked_fill(
+            mask.unsqueeze(-1) == 0, -1e4
+        )
+        weights = torch.softmax(scores, dim=1)
+        pooled = torch.einsum(
+            "bsh,bsd->bhd", weights, x.float()
+        )
+        return self.projection(pooled.flatten(1))
 
 
-class HybridBanglaBERTClassifier(nn.Module):
+class MultiScaleCNN(nn.Module):
+    def __init__(self, hidden, cnn_channels=128, cnn_kernels=(2, 3, 5)):
+        super().__init__()
+        self.kernels = cnn_kernels
+        self.convs = nn.ModuleList([
+            nn.Conv1d(
+                hidden,
+                cnn_channels,
+                kernel_size=k,
+            )
+            for k in self.kernels
+        ])
+        self.projection = nn.Linear(
+            cnn_channels * len(self.kernels),
+            hidden,
+        )
+
+    def forward(self, x, attention_mask):
+        z = x.float().transpose(1, 2)
+        lengths = attention_mask.sum(dim=1)
+        all_features = []
+        for conv, kernel_size in zip(self.convs, self.kernels):
+            z_pad = F.pad(
+                z,
+                (0, max(0, kernel_size - z.shape[-1])),
+            )
+            feature_map = F.gelu(conv(z_pad))
+            valid_lengths = torch.clamp(
+                lengths - kernel_size + 1,
+                min=1,
+                max=feature_map.shape[-1],
+            )
+            positions = torch.arange(
+                feature_map.shape[-1],
+                device=x.device,
+            ).unsqueeze(0)
+            invalid = positions >= valid_lengths.unsqueeze(1)
+            feature_map = feature_map.masked_fill(
+                invalid.unsqueeze(1), -1e4
+            )
+            all_features.append(
+                feature_map.max(dim=-1).values
+            )
+        concatenated = torch.cat(all_features, dim=1)
+        return self.projection(concatenated)
+
+
+class ClassSpecificAttention(nn.Module):
+    def __init__(self, hidden, n_classes=3, attention_dropout=0.10):
+        super().__init__()
+        self.attention = nn.Sequential(
+            nn.Linear(hidden, hidden),
+            nn.Tanh(),
+            nn.Dropout(attention_dropout),
+            nn.Linear(hidden, n_classes),
+        )
+        self.class_vectors = nn.Parameter(
+            torch.empty(n_classes, hidden)
+        )
+        self.class_bias = nn.Parameter(
+            torch.zeros(n_classes)
+        )
+        nn.init.xavier_uniform_(self.class_vectors)
+        self.scale = hidden ** -0.5
+
+    def forward(self, token_hidden, attention_mask):
+        scores = self.attention(token_hidden.float())
+        scores = scores.masked_fill(
+            attention_mask.unsqueeze(-1) == 0,
+            -1e4,
+        )
+        weights = torch.softmax(scores, dim=1)
+        class_representations = torch.einsum(
+            "bsc,bsh->bch",
+            weights,
+            token_hidden.float(),
+        )
+        logits = (
+            (
+                class_representations
+                * self.class_vectors.unsqueeze(0)
+            ).sum(dim=-1)
+            * self.scale
+            + self.class_bias
+        )
+        return logits, weights, class_representations
+
+
+class FeatureFusion(nn.Module):
+    def __init__(self, hidden, n, gated=False, dropout=0.35):
+        super().__init__()
+        self.gated = gated
+        if gated:
+            self.gate = nn.Sequential(
+                nn.Linear(hidden * n, hidden),
+                nn.GELU(),
+                nn.Linear(hidden, n),
+            )
+        self.refine = nn.Sequential(
+            nn.Linear(hidden, hidden),
+            nn.GELU(),
+            nn.Dropout(dropout),
+            nn.Linear(hidden, hidden),
+        )
+        self.norm = nn.LayerNorm(hidden)
+
+    def forward(self, reps):
+        if self.gated:
+            weights = self.gate(torch.cat(reps, dim=-1)).softmax(-1)
+        else:
+            weights = torch.full(
+                (reps[0].shape[0], len(reps)),
+                1.0 / len(reps),
+                device=reps[0].device,
+            )
+        fused = (torch.stack(reps, 1) * weights.unsqueeze(-1)).sum(1)
+        return self.norm(fused + self.refine(fused)), weights
+
+
+class BanglaHAFBERT(nn.Module):
+    """
+    BanglaHAF-BERT: Proposed Hybrid Attention Fusion Architecture.
+    Combines:
+      - BanglaBERT Encoder (csebuetnlp/banglabert)
+      - Multi-Head Attention Pooling
+      - Multi-Scale 1D-CNN (kernels: 2, 3, 5)
+      - Equal/Gated 4-way Feature Fusion (Attention, Mean, Max, CNN)
+      - Class-Specific Token Attention (Evidence scaling)
+      - Hierarchical Classification Heads (Depressive, Positive, Adaptive Gate)
+      - Supervised Contrastive Projection Head
+    """
     def __init__(
         self,
-        model_name,
+        source="csebuetnlp/banglabert",
+        flags=None,
         num_labels=3,
         dropout=0.35,
-        class_weights=None,
-        focal_gamma=1.0,
-        label_smoothing=0.10,
+        attention_heads=4,
+        attention_dropout=0.10,
+        cnn_channels=128,
+        cnn_kernels=(2, 3, 5),
+        projection_dim=64,
+        **kwargs,
     ):
         super().__init__()
-        self.bert = AutoModel.from_pretrained(
-            model_name,
+        if flags is None:
+            flags = {"gate": False}  # B0_PROPOSED_EF
+        self.flags = flags
+
+        self.encoder = AutoModel.from_pretrained(
+            source,
             low_cpu_mem_usage=True,
         )
-        hidden_dim = self.bert.config.hidden_size
-        self.self_attention = SelfAttentionWithMeanPooling(hidden_dim)
-        self.dropout = nn.Dropout(dropout)
-        self.classifier = nn.Linear(hidden_dim, num_labels)
-        self.criterion = LabelSmoothingFocalLoss(
-            alpha=class_weights or [1.0, 1.5, 1.3],
-            gamma=focal_gamma,
-            smoothing=label_smoothing,
+        hidden = self.encoder.config.hidden_size
+
+        self.attention_pool = MultiHeadAttentionPooling(
+            hidden,
+            attention_heads=attention_heads,
+            attention_dropout=attention_dropout,
         )
 
-    def forward(self, input_ids, attention_mask, labels=None, **kwargs):
-        outputs = self.bert(
+        if flags.get("cnn", True):
+            self.cnn = MultiScaleCNN(
+                hidden,
+                cnn_channels=cnn_channels,
+                cnn_kernels=cnn_kernels,
+            )
+
+        if flags.get("class_attention", True):
+            self.class_attention = ClassSpecificAttention(
+                hidden,
+                n_classes=num_labels,
+                attention_dropout=attention_dropout,
+            )
+            self.class_evidence_log_scale = nn.Parameter(torch.tensor(-0.7))
+
+        n_reps = 4 if flags.get("cnn", True) else 3
+        self.fusion = FeatureFusion(
+            hidden,
+            n_reps,
+            gated=flags.get("gate", False),
+            dropout=dropout,
+        )
+
+        self.dropout = nn.Dropout(dropout)
+        self.main_head = nn.Linear(hidden, num_labels)
+
+        if flags.get("hier", True):
+            self.depressive_head = nn.Linear(hidden, 1)
+            self.positive_head = nn.Linear(hidden, 1)
+            self.hierarchical_gate = nn.Linear(hidden, 1)
+
+        self.projection = nn.Sequential(
+            nn.Linear(hidden, 128),
+            nn.ReLU(),
+            nn.Linear(128, projection_dim),
+        )
+
+    def forward(self, input_ids, attention_mask, **kwargs):
+        tokens = self.encoder(
             input_ids=input_ids,
             attention_mask=attention_mask,
-        )
-        pooled = self.self_attention(
-            outputs.last_hidden_state,
-            attention_mask,
-        )
-        logits = self.classifier(self.dropout(pooled))
-        loss = None
-        if labels is not None:
-            loss = self.criterion(logits, labels)
-        return {"loss": loss, "logits": logits}
+        ).last_hidden_state.float()
+
+        mask = attention_mask.unsqueeze(-1).float()
+        att = self.attention_pool(tokens, attention_mask)
+        mean = (tokens * mask).sum(1) / mask.sum(1).clamp(min=1)
+        maximum = tokens.masked_fill(mask == 0, -1e4).max(1).values
+        reps = [att, mean, maximum]
+
+        if self.flags.get("cnn", True):
+            reps.append(self.cnn(tokens, attention_mask))
+
+        fused, gates = self.fusion(reps)
+        embeddings = F.normalize(self.projection(fused), dim=-1)
+        fused = self.dropout(fused)
+        main = self.main_head(fused)
+
+        cls = None
+        attention = None
+        scale = torch.tensor(0.0, device=fused.device)
+
+        if self.flags.get("class_attention", True):
+            cls, attention, _ = self.class_attention(tokens, attention_mask)
+            scale = self.class_evidence_log_scale.sigmoid()
+            main = main + scale * cls
+
+        mp = main.softmax(-1)
+        dep = None
+        pos = None
+        hp = mp
+        lamb = torch.zeros((len(mp), 1), device=mp.device)
+
+        if self.flags.get("hier", True):
+            dep = self.depressive_head(fused).squeeze(-1)
+            pos = self.positive_head(fused).squeeze(-1)
+            pd = dep.sigmoid()
+            pp = pos.sigmoid()
+            hp = torch.stack([pd, (1 - pd) * (1 - pp), (1 - pd) * pp], -1)
+            lamb = self.hierarchical_gate(fused).sigmoid()
+
+        final_probs = (1 - lamb) * mp + lamb * hp
+
+        return {
+            "logits": main,
+            "final_probs": final_probs,
+            "main_probs": mp,
+            "hierarchical_probs": hp,
+            "main_logits": main,
+            "class_logits": cls,
+            "dep_logits": dep,
+            "pos_logits": pos,
+            "embeddings": embeddings,
+            "fusion_gates": gates,
+            "hierarchical_lambda": lamb,
+            "class_attention_weights": attention,
+            "class_evidence_scale": scale,
+        }
+
+
+# Aliases for compatibility
+HNAHSBERTV7 = BanglaHAFBERT
+HybridBanglaBERTClassifier = BanglaHAFBERT

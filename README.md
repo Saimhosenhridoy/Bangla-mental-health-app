@@ -16,7 +16,7 @@
 
 This project is a web application that classifies **Bengali (Bangla) social-media style text** into three mental-health related categories and explains the decision with **SHAP**.
 
-The classifier is built on **BanglaBERT** (`csebuetnlp/banglabert`) with a hybrid pooling head (`HybridBanglaBERTClassifier`). Users type or paste Bangla text, receive a predicted class with confidence and class probabilities, then see a word-level SHAP visualization for **Depressive**, **Non_depressive**, and **Positive**.
+The classifier is built on **BanglaHAF-BERT** (`csebuetnlp/banglabert` encoder with the proposed Hybrid Attention Fusion architecture: Multi-Head Attention Pooling, Multi-Scale CNN, Equal Feature Fusion, Class-Specific Attention, and Hierarchical Classification Heads). Users type or paste Bangla text, receive a predicted class with confidence and class probabilities, then see a word-level SHAP visualization for **Depressive**, **Non_depressive**, and **Positive**.
 
 The app is intended for **research and awareness only**. It is **not a clinical diagnosis**, not a screening tool for emergency decisions, and not a substitute for a qualified mental health professional.
 
@@ -67,7 +67,7 @@ Predictions also include:
 
 - Bangla input with `Hind Siliguri` font support  
 - One-click example sentences for each class  
-- Hybrid BanglaBERT classifier  
+- BanglaHAF-BERT classifier (Proposed Hybrid Attention Fusion)  
 - Probability bar chart (Altair)  
 - SHAP text plot for all three classes  
 - Text cleaning (invisible characters, extra whitespace)  
@@ -86,8 +86,8 @@ User text
     → contains_crisis_language()   (warning only; prediction still runs)
     → predict_text()
          tokenizer (max_length from settings)
-         HybridBanglaBERTClassifier
-         softmax over 3 classes
+         BanglaHAF-BERT (B0_PROPOSED_EF)
+         Adaptive hierarchical & class attention fusion
     → probability chart
     → explain_text_interactive()
          shorten text for speed
