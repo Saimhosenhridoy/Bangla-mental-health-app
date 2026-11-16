@@ -1,4 +1,15 @@
+import os
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Automatically bridge Streamlit Cloud Secrets into environment variables
+try:
+    import streamlit as st
+    if hasattr(st, "secrets"):
+        for k, v in st.secrets.items():
+            if isinstance(v, (str, int, float, bool)):
+                os.environ[k.upper()] = str(v)
+except Exception:
+    pass
 
 
 class Settings(BaseSettings):
